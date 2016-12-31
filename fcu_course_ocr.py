@@ -1,7 +1,7 @@
 ﻿# coding=utf-8
 import requests
 import re
-from PIL import Image
+from PIL import Image,ImageFilter
 import subprocess
 ## Copyright (C) 2016 Leo Sheu. <loli>
 
@@ -31,9 +31,13 @@ while flag == 0:
     with open("code.png", 'wb') as fp:
         fp.write(get_code.content)
     image = Image.open("code.png").convert('L')
-    image = image.point(lambda x: 0 if x<130 else 255)
-    image = image.point(lambda i: i * 0.9)
-    image.save("decode.png")
+    image = image.point(lambda x: 0 if x<110 else 255)
+    #image = image.point(lambda i: i * 1)
+    image = image.filter(ImageFilter.DETAIL)
+    image = image.crop((5, 3, 43, 18))
+    imageNew = Image.open("0.png")
+    imageNew.paste(image,(5,3))
+    imageNew.save("decode.png")
     subprocess.call(["tesseract.exe","decode.png","out"])
     outputFile = open("out.txt",'r')
     content = outputFile.read(4)
