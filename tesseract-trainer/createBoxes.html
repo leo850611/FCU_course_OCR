@@ -1,0 +1,206 @@
+<html>
+<head>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.js"></script>
+<link rel="stylesheet" type="text/css" href="jquery-ui/jquery-ui.structure.min.css">
+<link rel="stylesheet" type="text/css" href="jquery-ui/jquery-ui.theme.min.css">
+<link rel="stylesheet" type="text/css" href="jquery-ui/jquery-ui.min.css">
+
+
+<style>
+
+body {
+    font-family: Helvetica, Arial, Sans-Serif;
+    font-size:14px;
+}
+#canvas {
+    border:1px solid black;
+    background-repeat:no-repeat;
+    width:150px; 
+    height:150px;
+    /*Makes the image larger, to make boxes easier to position*/
+    background-size:100%;
+}
+.resizeDiv {
+	border:1px solid red;
+	width:40px;
+	height:40px;
+	position:relative;
+}
+#output {
+  font-family:"Lucida Console", Monaco, monospace;
+}
+
+#download {
+  cursor:pointer;
+  text-decoration:underline;
+  color:#00f;
+}
+</style>
+
+</head>
+<body>
+<table><tr>
+<td>
+<div id="title"></div>
+<p>Center each box over its corresponding character. The box file on the right is downloadable</p>
+<div id="canvas">
+</div>
+<input type="file" id="fileElem" accept="image/*" style="display:none" onchange="handleFiles(this.files)" multiple>
+<p>
+<a href="#" id="fileSelect">Add a new file</a> 
+<div id="fileList">
+  <p>
+  <p>No files selected!</p>
+</div>
+</td><td>
+<div id="output"></div>
+
+<span id="download" style="">Download .box</span>
+
+</td></tr></table>
+
+<script>
+
+window.URL = window.URL || window.webkitURL;
+
+//Global file list
+var fileList;
+var fileIndex = 0;
+
+var fileSelect = document.getElementById("fileSelect"),
+    fileElem = document.getElementById("fileElem"),
+    fileList = document.getElementById("fileList");
+
+fileSelect.addEventListener("click", function (e) {
+  if (fileElem) {
+    fileElem.click();
+  }
+  e.preventDefault(); // prevent navigation to "#"
+}, false);
+
+function addNewFile() {
+    if(window.fileList.length <= window.fileIndex) {
+      $('#canvas').css('background-image','');
+      return;
+    }
+    var img = document.createElement("img");
+    img.src = window.URL.createObjectURL(window.fileList[window.fileIndex]);
+    $('#canvas').css('background-image', 'url(' + img.src + ')');
+    
+    img.onload = function() {
+      window.URL.revokeObjectURL(this.src);
+      console.log("Changing height: "+img.height+" width: "+img.width);
+      $('#canvas').css('height', img.height*2+'px');
+      $('#canvas').css('width', img.width*2+'px');
+    }
+    var info = document.createElement("span");
+    //info.innerHTML = files[i].name + ": " + files[i].size + " bytes";
+    addSquares(window.fileList[window.fileIndex].name);
+    window.fileIndex++;
+}
+
+function handleFiles(files) {
+  if (!files.length) {
+    fileList.innerHTML = "<p>No files selected!</p>";
+  } else {
+    window.fileList = files;
+    window.fileIndex = 0;
+    addNewFile();
+  }
+}
+
+$('body').on('mouseup', 'div.resizeDiv', function() {
+	var outputText = "";
+    $( ".resizeDiv" ).each(function() {
+      var canvasLeft = $('#canvas').position().left;
+      var canvasTop = $('#canvas').position().top;
+    	var position = $(this).position();
+      var top = parseInt((position.top-canvasTop)/2);
+      var left = parseInt((position.left-canvasLeft)/2);
+    	var right = parseInt((position.left + $(this).width()-canvasLeft)/2);
+    	var bottom = parseInt((position.top + $(this).height()-canvasTop)/2);
+    	outputText += $(this).attr("value")+" "+left+" "+top+" "+right+" "+bottom+"<br>";
+	});
+	console.log(outputText);
+	$("#output").html(outputText);
+
+});
+
+function addSquares(filename) {
+  //Get rid of the old squares
+  $('.resizeDiv').remove();
+	console.log("Adding squares for name "+filename);
+  var title = "";
+	for(var i=0; i < filename.length; i++) {
+		if(filename.charAt(i) == ".") {
+      $("#title").html(title);
+        //Clear any box file already generated
+        $('#content').html();
+        //Trigger a click on the first square to make sure the box file/content area gets populated
+        $('#0').trigger('click');
+			return;
+		}
+    //If we haven't hit a "." yet, add characters
+		title  = title+filename.charAt(i);
+		$("<div/>", {
+       "class": "resizeDiv",
+        "id": i,
+      }).resizable().draggable().css('left', i*50+"px").css('display','inline-block').css('opacity','.7')
+    .attr('value',filename.charAt(i)).prepend(filename.charAt(i))
+		.addClass("resizeDiv").attr('id', i)
+      .appendTo("#canvas");
+
+	}
+
+}
+
+
+$('.resizeDiv')
+.resizable({
+    start: function(e, ui) {
+        console.log('resizing started');
+    },
+    resize: function(e, ui) {
+     
+    },
+    stop: function(e, ui) {
+        console.log('resizing stopped');
+    }
+});
+
+
+$("#download").click(function(){
+  console.log("Clicked on download link");
+  var boxText = $("#output").html();
+  boxText = boxText.replace(/<br>/g, "\n");
+  //<a download='FileName' href='data:application/octet-stream;charset=utf-16le;base64,//5mAG8AbwAgAGIAYQByAAoA'>
+  //<a href="">text file</a>
+  //var link = "data:text/plain;charset=utf-8;base64,//"+boxText;
+
+  var link = "data:application/octet-stream;filename="+$("#title").html()+".box," + encodeURIComponent(boxText);
+  console.log($("#title").html());
+  console.log(link);
+  saveAs(link, $("#title").html()+".box");
+
+});
+
+
+function saveAs(uri, filename) {
+    var link = document.createElement('a');
+    if (typeof link.download === 'string') {
+        document.body.appendChild(link); // Firefox requires the link to be in the body
+        link.download = filename;
+        link.href = uri;
+        link.click();
+        document.body.removeChild(link); // remove the link when done
+    } else {
+        location.replace(uri);
+    }
+    //Add new file to the window
+    addNewFile();
+}
+</script>
+
+</body>
+</html>
